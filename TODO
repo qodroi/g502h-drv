@@ -1,0 +1,6 @@
+// SPDX-License-Identifier: GPL-2.0-only
+
+- Implement profiles: 5 profiles that the user can switch. Map the profile switch button on the mouse
+	to an action. Don't use the default ON-BOARD profiles (doc sucks), implement it myself.
+
+- Learn to communicate with X server to hook full screen applications, and change profiles.
