@@ -1,0 +1,5 @@
+An attempt to make Gaming a little bit better on Linux. Each button is remapped and attached with an action that attempts to behave like the official Windows driver. Basic functionality is the current operations this driver is capable of. DPI, Report Rate, RGB (To be Finished), Profile Switching are included... GUI is planned to be added as well.
+
+It isn't finished yet, so the repo is mainly used for cloud storage, developement will take a little bit longer as I'm quite busy for the next few months.
+
+Thank you.
