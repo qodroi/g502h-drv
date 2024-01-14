@@ -178,13 +178,6 @@ struct hidpp_report {
     };
 } __packed;
 
-/* Struct used by work_struct API */
-struct private_work_struct {
-	struct hid_device *hdev;
-	struct hidpp_report report;
-	struct work_struct work;
-};
-
 /* This struct defines a firmware to be used with quirks */
 struct gfirmware {
     enum firmware_type ftype;

@@ -11,13 +11,15 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 
+static DEFINE_SPINLOCK(report_work_lock);
+
 #include "g502.h"
 
 struct logi_g502_data {
 	struct list_head profiles_list;
 	struct g502_profile *profiles[G502_MAX_PROFILES];
-	struct g502_profile *current_prof;
-	struct private_work_struct priv_ws;
+	struct g502_profile *current_prof; /* Pointed by index in @profiles*/
+	struct hidpp_report report;
 	struct input_dev *input_dev;
 	struct mutex mutex_dev; /* Protect this struct's shared fields */
 	struct gfirmware gfw;
@@ -40,7 +42,7 @@ __do_fill_report(struct hidpp_report *report_ptr,
 
 static __always_inline void echo_current_profile_config(struct g502_profile *curr_prof)
 {
-    pr_info("current profile\tindex: %d\n\treport rate: %u\n\trgb: %u\n\tdpi: %u\n\t",
+    pr_info("current profile\tindex: %d\n\treport rate: %u\n\trgb: %u\n\tdpi: %u\n\t\n",
                  curr_prof->index, curr_prof->dev_report_rate, curr_prof->dev_rgb, curr_prof->dev_dpi);
 }
 
@@ -57,8 +59,12 @@ initalize_profile_struct(struct g502_profile *prof_ptr,
 static int g502_send_report(struct hid_device *hdev,
 			struct hidpp_report *report)
 {
-	int ret = -ENOMEM;
-	const size_t report_length = (report->report_id == G502_COMMAND_SHORT_REPORT_ID
+	int ret;
+	size_t report_length;
+
+	spin_lock(&report_work_lock);
+	ret = -ENOMEM;
+	report_length = (report->report_id == G502_COMMAND_SHORT_REPORT_ID
 								? G502_COMMAND_SHORT_SIZE
 								: G502_COMMAND_LONG_SIZE);
 
@@ -77,18 +83,8 @@ static int g502_send_report(struct hid_device *hdev,
 	ret = 0;
 
 out:
+	spin_unlock(&report_work_lock);
 	return ret;
-}
-
-/* Callback called by schedule_work, to be run in a work context.
- * and executes hid_hw_raw_request which _can_ schedule and sleep.
- */
-static void g502_work_send_report(struct work_struct *work)
-{
-	struct private_work_struct *priv_ws = container_of(work,
-				struct private_work_struct, work);
-
-	g502_send_report(priv_ws->hdev, &priv_ws->report);
 }
 
 /* Sends out command to get the current device's config to be caught
@@ -102,14 +98,14 @@ static void g502_refresh_gdv_config(struct hid_device *hdev)
 	if (intf->cur_altsetting->desc.bInterfaceNumber == 0)
 		return;
 
-	__do_fill_report(&gdv->priv_ws.report, G502_COMMAND_SHORT_REPORT_ID,
+	__do_fill_report(&gdv->report, G502_COMMAND_SHORT_REPORT_ID,
 		G502_FEATURE_REPORT_RATE, G502_GET_REPORT_RATE,
 		G502_COMMAND_SHORT_SIZE, NULL);
-	schedule_work(&gdv->priv_ws.work);
+	g502_send_report(hdev, &gdv->report);
 
-	__do_fill_report(&gdv->priv_ws.report, G502_COMMAND_SHORT_REPORT_ID,
+	__do_fill_report(&gdv->report, G502_COMMAND_SHORT_REPORT_ID,
 		G502_FEATURE_DPI, G502_GET_DPI, G502_COMMAND_SHORT_SIZE, NULL);
-	schedule_work(&gdv->priv_ws.work);
+	g502_send_report(hdev, &gdv->report);
 
 	/* TODO: Add RGB */
 }
@@ -127,10 +123,10 @@ static int g502_update_device_config(struct hid_device *hdev, u16 report_rate,
 	if (report_rate)
 	{
 		params[0] = report_rate;
-		__do_fill_report(&gdv->priv_ws.report, G502_COMMAND_SHORT_REPORT_ID,
+		__do_fill_report(&gdv->report, G502_COMMAND_SHORT_REPORT_ID,
 							G502_FEATURE_REPORT_RATE, G502_SET_REPORT_RATE,
 							G502_COMMAND_SHORT_SIZE, params);
-		schedule_work(&gdv->priv_ws.work);
+		g502_send_report(hdev, &gdv->report);
 	}
 
 	if (dpi)
@@ -138,10 +134,10 @@ static int g502_update_device_config(struct hid_device *hdev, u16 report_rate,
 		params[0] = 0; /* Sensor idx */
 		params[1] = (u8)((dpi >> 8) & 0xFF);
 		params[2] = (u8)((dpi) & 0xFF);
-		__do_fill_report(&gdv->priv_ws.report, G502_COMMAND_SHORT_REPORT_ID,
+		__do_fill_report(&gdv->report, G502_COMMAND_SHORT_REPORT_ID,
 							G502_FEATURE_DPI, G502_SET_DPI,
 							G502_COMMAND_SHORT_SIZE, params);
-		schedule_work(&gdv->priv_ws.work);
+		g502_send_report(hdev, &gdv->report);
 	}
 
 	/* Fetch in back the values we just submitted
@@ -158,7 +154,6 @@ static int g502_switch_profile(struct hid_device *hdev)
 
 	if (unlikely(list_empty(&gdv->profiles_list)))
 		return -EINVAL;
-
 
 	/* Circular means it returns the _first_ element if
 		 gdv->current_prof->entry is the last one. */
@@ -178,6 +173,8 @@ static int g502_handle_regular_event(struct hid_device *hdev,
 {
 	if (input == NULL)
 		return 1;
+
+	hid_info(hdev, "%x\n", data[1]);
 
 	/* Wheel cmds is one byte after buttons, except middle-click. */
 	if (data[1] & 0x2) { // LEFT
@@ -374,8 +371,6 @@ static int __init g502_init_drvdata(struct hid_device *hdev)
 
 	mutex_init(&gdv->mutex_dev);
 	INIT_LIST_HEAD(&gdv->profiles_list);
-	INIT_WORK(&gdv->priv_ws.work, g502_work_send_report);
-	gdv->priv_ws.hdev = hdev;
 
 	hidinput = list_first_entry(&hdev->inputs, struct hid_input, list);
 	gdv->input_dev = hidinput->input;
@@ -407,11 +402,10 @@ static int __init g502_init_drvdata(struct hid_device *hdev)
 
 	/* Disable on-board profiles support on device entry */
 	params[0] = G502_ON_BOARD_PROFILES_OFF;
-	__do_fill_report(&gdv->priv_ws.report, G502_COMMAND_SHORT_REPORT_ID,
+	__do_fill_report(&gdv->report, G502_COMMAND_SHORT_REPORT_ID,
 							G502_FEATURE_ON_BOARD_PROFILES, G502_CONTROL_ON_BOARD_PROFILES,
 							G502_COMMAND_SHORT_SIZE, params);
-	schedule_work(&gdv->priv_ws.work);
-
+	g502_send_report(hdev, &gdv->report);
 	g502_refresh_gdv_config(hdev);
 
 	return 0;
