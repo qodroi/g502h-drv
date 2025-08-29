@@ -1,4 +1,20 @@
-// SPDX-License-Identifier: GPL-2.0-only
+/*
+ *   Copyright (c) 2024 Roi
+
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, either version 3 of the License, or
+ *   (at your option) any later version.
+
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 
 #ifndef G502_H
 #define G502_H
@@ -89,7 +105,6 @@ static __always_inline u8 report_rate_dth(unsigned int report_rate)
 
 /* Features index and their functions
  * Note: These are device specific (Only index).
- * FIXME: Too long names and it bothers me, shorten them.
 */
 #define G502_FEATURE_REPORT_RATE            0x0bU /* 0x8060 */
 #   define G502_GET_REPORT_RATE             0x10U
@@ -98,7 +113,7 @@ static __always_inline u8 report_rate_dth(unsigned int report_rate)
 #define G502_MAX_DPI_VALUE           25600U
 #define G502_FEATURE_DPI             0x0aU /* 0x2201 */
 #   define G502_GET_DPI              0x20U
-#   define G502_SET_DPI              0x03U
+#   define G502_SET_DPI              0x30U
 
 /* Currently we don't support mutltiple profiles,
  * so we disable it on device's probe. On/Off should be
@@ -116,7 +131,6 @@ static __always_inline u8 report_rate_dth(unsigned int report_rate)
 */
 #define G502_FEATURE_COLOR_LED_EFFECTS            0x02U /* 0x8070 */
 #   define G502_CHANGE_LED_MODE                         0x30U
-
 
 /* Firmware information. Firmware entity should be passed after
  * the function index, as a parameter.. We always pass 1. LMK for issues.
@@ -155,7 +169,7 @@ enum g502_led_type {
 
 struct g502_profile {
 	struct list_head entry;
-	unsigned int dev_rgb;
+	u32 dev_rgb;
     u16 dev_report_rate;
 	u16 dev_dpi;
 	int index;

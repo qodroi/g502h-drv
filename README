@@ -1,5 +1,7 @@
-An attempt to make Gaming a little bit better on Linux. Each button is remapped and attached with an action that attempts to behave like the official Windows driver. Basic functionality is the current operations this driver is capable of. DPI, Report Rate, RGB (To be Finished), Profile Switching are included... GUI is planned to be added as well.
+This module was made for educational purposes and is only for G502 users. There are some bugs which I haven't figured out yet how to solve them; when you write to the device attributes in the sysfs in order to change DPI/report rate, you might need to submit the write 2-3 times before the device takes the request and recognizes it.. I bet this is something to do with the locking/timing mechanism I used altogether with the `hid_hw_raw_request`, or it's a different issue with the underlying protocol itself.
 
-It isn't finished yet, so the repo is mainly used for cloud storage, developement will take a little bit longer as I'm quite busy for the next few months.
+There many useful configuration values in the protocol itself about the mice that I want to fetch and be able to display them to the end-user. I also want to mimic the graphical user interface of GHUB and actually make it nicer and easier to change the device settings, but it will take time to implement as in the moment it's currently not really important to me to be working on.
+
+The repo is mainly used for cloud storage, developement will take a little bit longer as I'm quite busy for the next few months.
 
 Thank you.
