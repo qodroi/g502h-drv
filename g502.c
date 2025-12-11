@@ -136,6 +136,7 @@ static int g502_update_device_config(struct hid_device *hdev, u16 report_rate,
 							G502_FEATURE_REPORT_RATE, G502_SET_REPORT_RATE,
 							G502_COMMAND_SHORT_SIZE, params);
 		g502_send_report(hdev, &gdv->report);
+		refresh_report_rate(hdev);
 	}
 
 	if (dpi)
@@ -147,6 +148,7 @@ static int g502_update_device_config(struct hid_device *hdev, u16 report_rate,
 							G502_FEATURE_DPI, G502_SET_DPI,
 							G502_COMMAND_SHORT_SIZE, params);
 		g502_send_report(hdev, &gdv->report);
+		refresh_dpi(hdev);
 	}
 
 	return 0;
