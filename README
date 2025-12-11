@@ -1,7 +1,4 @@
-This module was made for educational purposes and is only for G502 users. There are some bugs which I haven't figured out yet how to solve them; when you write to the device attributes in the sysfs in order to change DPI/report rate, you might need to submit the write 2-3 times before the device takes the request and recognizes it.. I bet this is something to do with the locking/timing mechanism I used altogether with the `hid_hw_raw_request`, or it's a different issue with the underlying protocol itself.
+G502-Hero Kernel Driver
+============================
 
-There many useful configuration values in the protocol itself about the mice that I want to fetch and be able to display them to the end-user. I also want to mimic the graphical user interface of GHUB and actually make it nicer and easier to change the device settings, but it will take time to implement as in the moment it's currently not really important to me to be working on.
-
-The repo is mainly used for cloud storage, developement will take a little bit longer as I'm quite busy for the next few months.
-
-Thank you.
+This driver aims to allow G502-Hero to have the same functionally as it has on Windows, this includes DPI and Report Rate changes, LED controliing, up to 5 configurations and more. There are some bugs and developement is quite slow but I will be working on this repo for the next few months.
